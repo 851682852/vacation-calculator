@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>我的假期计算器 · 上四休二</title>
+<style>
+  :root{
+    --bg:#f4f6fb;
+    --card:#ffffff;
+    --ink:#1b2430;
+    --ink-soft:#63707f;
+    --line:#e3e8f0;
+    --work:#2563eb;
+    --work-bg:#eaf0ff;
+    --rest:#0f9d76;
+    --rest-bg:#e6f7f1;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:28px 16px 48px;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:22px;margin:0 0 6px;letter-spacing:.5px;}
+  .sub{color:var(--ink-soft);font-size:13px;margin:0 0 20px;line-height:1.6;}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;margin-bottom:14px;
+    box-shadow:0 1px 2px rgba(20,35,60,.04);
+  }
+  .label{font-size:12px;color:var(--ink-soft);letter-spacing:1px;margin-bottom:10px;}
+
+  /* 今日状态卡 */
+  .today{text-align:center;padding:26px 20px;}
+  .today .date{font-size:15px;color:var(--ink-soft);margin-bottom:12px;}
+  .today .status{font-size:44px;font-weight:700;letter-spacing:2px;line-height:1.2;}
+  .today .hint{margin-top:12px;font-size:14px;color:var(--ink-soft);line-height:1.7;}
+  .today.is-rest{background:linear-gradient(180deg,#f2fbf7 0%,#ffffff 70%);border-color:#cdeee2;}
+  .today.is-rest .status{color:var(--rest);}
+  .today.is-work{background:linear-gradient(180deg,#f4f7ff 0%,#ffffff 70%);border-color:#d8e2fb;}
+  .today.is-work .status{color:var(--work);}
+
+  .row{display:flex;gap:14px;margin-bottom:14px;}
+  .row .card{flex:1;margin-bottom:0;}
+  .mini-label{font-size:12px;color:var(--ink-soft);margin-bottom:8px;letter-spacing:.5px;}
+  .mini-val{font-size:19px;font-weight:600;line-height:1.45;}
+
+  /* 周期圆点 */
+  .dots{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .dot{
+    width:52px;height:52px;border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    font-size:12px;font-weight:600;border:2px solid transparent;
+  }
+  .dot span{font-size:10px;font-weight:400;opacity:.75;margin-top:2px;}
+  .dot.w{background:var(--work-bg);color:var(--work);}
+  .dot.r{background:var(--rest-bg);color:var(--rest);}
+  .dot.now{border-color:currentColor;box-shadow:0 0 0 4px rgba(37,99,235,.08);}
+  .dot.now.r{box-shadow:0 0 0 4px rgba(15,157,118,.1);}
+
+  /* 查询 */
+  .query{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  input[type=date]{
+    flex:1;min-width:150px;padding:11px 12px;font-size:15px;color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;background:#fbfcfe;outline:none;
+    font-family:inherit;
+  }
+  input[type=date]:focus{border-color:var(--work);background:#fff;}
+  button{
+    padding:11px 20px;font-size:15px;font-family:inherit;cursor:pointer;
+    border-radius:10px;border:1px solid var(--work);background:var(--work);color:#fff;
+    transition:.15s;
+  }
+  button:hover{filter:brightness(1.08);}
+  button.ghost{background:#fff;color:var(--ink-soft);border-color:var(--line);}
+  button.ghost:hover{background:#f7f9fc;color:var(--ink);filter:none;}
+  .result{margin-top:14px;font-size:15px;line-height:1.8;display:none;}
+  .result.show{display:block;}
+  .result b.big{font-size:20px;}
+
+  /* 未来列表 */
+  .list{max-height:320px;overflow-y:auto;margin:-4px -4px 0;}
+  .item{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px 8px;border-bottom:1px dashed var(--line);font-size:14px;
+  }
+  .item:last-child{border-bottom:none;}
+  .item .d{color:var(--ink-soft);}
+  .item .d strong{color:var(--ink);font-weight:600;margin-right:8px;}
+  .item .d .wk{font-size:12px;}
+  .tag{font-size:12px;padding:3px 11px;border-radius:20px;font-weight:600;}
+  .tag.w{background:var(--work-bg);color:var(--work);}
+  .tag.r{background:var(--rest-bg);color:var(--rest);}
+  .item.today-row{background:#fafbfe;border-radius:8px;}
+  .badge{
+    font-size:11px;padding:2px 8px;border-radius:20px;margin-left:6px;vertical-align:1px;
+    background:#fff4e5;color:#c2740c;font-weight:600;white-space:nowrap;
+  }
+
+  /* 撞上周末 */
+  .wk-group + .wk-group{margin-top:16px;}
+  .wk-group-title{font-size:12px;color:var(--ink-soft);margin-bottom:8px;letter-spacing:.5px;}
+  .wk-item{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:10px 13px;border-radius:10px;margin-bottom:6px;font-size:14px;
+  }
+  .wk-item:last-child{margin-bottom:0;}
+  .wk-item.full{background:var(--rest-bg);border:1px solid #cdeee2;}
+  .wk-item.full .rng{color:var(--rest);font-weight:700;}
+  .wk-item.part{background:#fbfcfe;border:1px solid var(--line);}
+  .wk-item.part .rng{font-weight:600;}
+  .wk-item .meta{font-size:12px;color:var(--ink-soft);white-space:nowrap;}
+  .wk-more{font-size:12px;color:#9aa6b5;margin-top:8px;}
+  .hint-extra{margin-top:8px;font-size:13px;font-weight:600;color:#c2740c;}
+
+  .foot{text-align:center;color:#9aa6b5;font-size:12px;margin-top:22px;line-height:1.8;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>我的假期计算器</h1>
+  <p class="sub">
+    规则：上 4 天班、休 2 天，6 天一个循环<br>
+    基准：2026-10-11 为上班第 1 天 · 不含法定节假日调休
+  </p>
+
+  <div class="card today" id="todayCard">
+    <div class="date" id="todayDate">—</div>
+    <div class="status" id="todayStatus">—</div>
+    <div class="hint" id="todayHint"></div>
+    <div class="hint-extra" id="todayWeekend" style="display:none"></div>
+  </div>
+
+  <div class="row">
+    <div class="card">
+      <div class="mini-label">距离下次放假</div>
+      <div class="mini-val" id="nextRestDays">—</div>
+    </div>
+    <div class="card">
+      <div class="mini-label">下次放假时间</div>
+      <div class="mini-val" id="nextRestRange">—</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">当前周期</div>
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">查指定日期是否放假</div>
+    <div class="query">
+      <input type="date" id="queryDate">
+      <button id="queryBtn">查询</button>
+      <button id="todayBtn" class="ghost">测今天</button>
+    </div>
+    <div class="result" id="queryResult"></div>
+  </div>
+
+  <div class="card">
+    <div class="label">撞上周末的休息日</div>
+    <div class="wk-group">
+      <div class="wk-group-title">完整双休 · 两天正好是周六 + 周日</div>
+      <div id="wkFull"></div>
+    </div>
+    <div class="wk-group">
+      <div class="wk-group-title">只蹭到一天 · 另一天是工作日</div>
+      <div id="wkPart"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="label">未来 30 天</div>
+    <div class="list" id="dayList"></div>
+  </div>
+
+  <div class="foot">
+    双击本文件即可随时使用 · 想改规则只需改代码开头的 <b>WORK_DAYS / REST_DAYS / BASE_DATE</b>
+  </div>
+</div>
+
+<script>
+/* ====== 可调参数 ====== */
+const BASE_DATE = '2026-10-11';  // 已知的「上班第 1 天」
+const WORK_DAYS = 4;             // 连续上班天数
+const REST_DAYS = 2;             // 连续休息天数
+/* ====================== */
+
+const PERIOD = WORK_DAYS + REST_DAYS;
+const WK = ['周日','周一','周二','周三','周四','周五','周六'];
+
+function parse(s){
+  const [y,m,d] = s.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+const BASE = parse(BASE_DATE);
+
+function midnight(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function diffDays(d){ return Math.round((midnight(d) - BASE) / 86400000); }
+
+/* 返回该日期在周期中的位置：0 ~ PERIOD-1 */
+function phase(d){
+  let i = diffDays(d) % PERIOD;
+  if(i < 0) i += PERIOD;
+  return i;
+}
+function isRest(d){ return phase(d) >= WORK_DAYS; }
+function fmt(d){ return (d.getMonth()+1) + '月' + d.getDate() + '日'; }
+function fmtW(d){ return fmt(d) + ' ' + WK[d.getDay()]; }
+function fullDate(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function addDays(d, n){ const t = new Date(d); t.setDate(t.getDate()+n); return t; }
+function isSameDay(a,b){ return midnight(a) - midnight(b) === 0; }
+
+/* ---------- 顶部今日状态 ---------- */
+function renderToday(){
+  const now = new Date();
+  const card = document.getElementById('todayCard');
+  const rest = isRest(now);
+  card.className = 'card today ' + (rest ? 'is-rest' : 'is-work');
+
+  document.getElementById('todayDate').textContent =
+    fullDate(now) + '  ' + WK[now.getDay()] + ' · 周期第 ' + (phase(now)+1) + ' 天';
+
+  document.getElementById('todayStatus').textContent = rest ? '今日放假' : '今日上班';
+
+  const hint = document.getElementById('todayHint');
+  if(rest){
+    const left = REST_DAYS - (phase(now) - WORK_DAYS);   // 含今天还剩几天假
+    hint.textContent = left > 1
+      ? '假期进行中，本轮到 ' + fmtW(addDays(now, left-1)) + '，还剩 ' + left + ' 天（含今天）'
+      : '假期最后一天，明天开始上班';
+  }else{
+    const n = WORK_DAYS - phase(now);                    // 含今天还要上几天
+    hint.textContent = '坚持一下，还要上 ' + n + ' 天（含今天），' + fmtW(addDays(now, n)) + ' 开始放假';
+  }
+
+  /* 今天是否撞上周末 */
+  const weBox = document.getElementById('todayWeekend');
+  if(rest && (now.getDay() === 0 || now.getDay() === 6)){
+    weBox.style.display = 'block';
+    weBox.textContent = '本段休息撞上周末，正好和别人的双休对得上';
+  }else{
+    weBox.style.display = 'none';
+  }
+
+  /* 下次放假 */
+  let d = now, guard = 0;
+  while(!isRest(d) && guard++ < 366) d = addDays(d, 1);
+  const nd = document.getElementById('nextRestDays');
+  if(rest){
+    nd.textContent = '正在放假中';
+  }else{
+    const gap = Math.round((midnight(d) - midnight(now)) / 86400000);
+    nd.textContent = gap === 1 ? '明天（明天就放假）' : gap + ' 天后';
+  }
+  /* 放假区间 */
+  let start = d, end = d;
+  const g1 = guard;
+  let cursor = d, g2 = 0;
+  while(isRest(cursor) && g2++ < 366) cursor = addDays(cursor, -1);
+  start = addDays(cursor, 1);
+  cursor = d;
+  while(isRest(cursor) && g2++ < 366) cursor = addDays(cursor, 1);
+  end = addDays(cursor, -1);
+  document.getElementById('nextRestRange').textContent = rest
+    ? '本轮 ' + fmt(start) + ' ~ ' + fmt(end)
+    : fmt(start) + ' ~ ' + fmt(end);
+}
+
+/* ---------- 周期圆点 ---------- */
+function renderDots(){
+  const now = new Date();
+  const cur = phase(now);
+  const box = document.getElementById('dots');
+  box.innerHTML = '';
+  let cycleStart = addDays(now, -cur);
+  for(let i = 0; i < PERIOD; i++){
+    const day = addDays(cycleStart, i);
+    const r = i >= WORK_DAYS;
+    const el = document.createElement('div');
+    el.className = 'dot ' + (r ? 'r' : 'w') + (i === cur && isSameDay(day, now) ? ' now' : '');
+    el.innerHTML = (r ? '休' : '班') + '<span>' + (day.getMonth()+1) + '/' + day.getDate() + '</span>';
+    el.title = fmtW(day) + (r ? ' 放假' : ' 上班');
+    box.appendChild(el);
+  }
+}
+
+/* ---------- 日期查询 ---------- */
+function query(d){
+  const box = document.getElementById('queryResult');
+  const rest = isRest(d);
+  const w = WORK_DAYS - phase(d);
+  const info = rest
+    ? '放假第 ' + (phase(d) - WORK_DAYS + 1) + ' 天，还剩 ' + (REST_DAYS - (phase(d)-WORK_DAYS)) + ' 天（含当天）'
+    : '上班第 ' + (phase(d) + 1) + ' 天，本轮到 ' + fmtW(addDays(d, w)) + ' 放假';
+  box.className = 'result show';
+  box.innerHTML =
+    fmtW(d) + '：<b class="big" style="color:' + (rest ? 'var(--rest)' : 'var(--work)') + '">' +
+    (rest ? '放假' : '上班') + '</b><br><span style="color:var(--ink-soft)">' + info + '</span>';
+}
+
+/* ---------- 撞上周末 ---------- */
+const LOOKAHEAD_DAYS = 730;
+function collectWeekend(){
+  const now = midnight(new Date());
+  const cs = addDays(now, -phase(now));          // 当前周期的起点
+  const full = [], part = [];
+  for(let k = 0; k * PERIOD <= LOOKAHEAD_DAYS; k++){
+    const a = addDays(cs, k * PERIOD + WORK_DAYS);   // 休息第 1 天
+    const b = addDays(a, 1);                         // 休息第 2 天
+    if(b < now) continue;                            // 已过去
+    const aw = a.getDay(), bw = b.getDay();          // 0=周日 6=周六
+    if(aw === 6 && bw === 0) full.push([a, b]);      // 周六 + 周日
+    else if(aw === 0 || aw === 6 || bw === 0 || bw === 6) part.push([a, b]);
+  }
+  return {full: full, part: part};
+}
+function renderWeekend(){
+  const data = collectWeekend();
+  const now = midnight(new Date());
+  const draw = function(arr, id, n, cls){
+    const el = document.getElementById(id);
+    if(!arr.length){ el.innerHTML = '<div class="wk-more">未来两年内没有</div>'; return; }
+    el.innerHTML = arr.slice(0, n).map(function(p){
+      const gap = Math.round((p[0] - now) / 86400000);
+      const when = gap <= 0 ? '正在进行' : gap + ' 天后';
+      return '<div class="wk-item ' + cls + '">' +
+               '<div class="rng">' + fmt(p[0]) + ' ' + WK[p[0].getDay()] + ' ~ ' +
+                 fmt(p[1]) + ' ' + WK[p[1].getDay()] + '</div>' +
+               '<div class="meta">' + when + '</div>' +
+             '</div>';
+    }).join('');
+    if(arr.length > n){
+      el.innerHTML += '<div class="wk-more">… 未来两年还有 ' + (arr.length - n) + ' 次</div>';
+    }
+  };
+  draw(data.full, 'wkFull', 5, 'full');
+  draw(data.part, 'wkPart', 5, 'part');
+}
+
+/* ---------- 未来 30 天 ---------- */
+function renderList(){
+  const now = new Date();
+  const box = document.getElementById('dayList');
+  box.innerHTML = '';
+  for(let i = 0; i < 30; i++){
+    const d = addDays(now, i);
+    const rest = isRest(d);
+    const we = rest && (d.getDay() === 0 || d.getDay() === 6);
+    const row = document.createElement('div');
+    row.className = 'item' + (i === 0 ? ' today-row' : '');
+    row.innerHTML =
+      '<div class="d"><strong>' + (i === 0 ? '今天' : fmtW(d)) + '</strong>' +
+      (i === 0 ? '<span class="wk">' + fmtW(d) + '</span>' : '') + '</div>' +
+      '<div><span class="tag ' + (rest ? 'r' : 'w') + '">' + (rest ? '放假' : '上班') + '</span>' +
+      (we ? '<span class="badge">周末</span>' : '') + '</div>';
+    box.appendChild(row);
+  }
+}
+
+/* ---------- 初始化 ---------- */
+const today = new Date();
+document.getElementById('queryDate').value = fullDate(today);
+renderToday();
+renderDots();
+renderWeekend();
+renderList();
+
+document.getElementById('queryBtn').onclick = () => {
+  const v = document.getElementById('queryDate').value;
+  if(!v) return;
+  query(parse(v));
+};
+document.getElementById('todayBtn').onclick = () => {
+  const t = new Date();
+  document.getElementById('queryDate').value = fullDate(t);
+  query(t);
+};
+document.getElementById('queryDate').addEventListener('keydown', e => {
+  if(e.key === 'Enter') document.getElementById('queryBtn').click();
+});
+</script>
+</body>
+</html>
